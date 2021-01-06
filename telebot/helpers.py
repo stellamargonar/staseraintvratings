@@ -5,7 +5,7 @@ import sqlite3
 from datetime import datetime
 
 import click
-from flask import current_app, g
+from flask import g
 from json import JSONEncoder, JSONDecoder
 from typing import Optional
 from urllib import parse
@@ -231,7 +231,7 @@ class DBHelper:
     @classmethod
     def conn(cls):
         if "db" not in g:
-            g.db = sqlite3.connect(current_app.config['DATABASE'])
+            g.db = sqlite3.connect(cls._db_name)
             g.db.row_factory = sqlite3.Row
 
         return g.db

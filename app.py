@@ -12,7 +12,7 @@ bot = telegram.Bot(token=TOKEN)
 def init_app(app):
     app.teardown_appcontext(DBHelper.close_db)
     app.cli.add_command(init_db_command)
-    init_db_command()
+    DBHelper.init_db()
 
 
 def do_welcome(chat_id, msg_id):

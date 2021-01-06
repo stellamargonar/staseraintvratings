@@ -227,18 +227,19 @@ class WebHelper:
 
 class DBHelper:
     _db_name = 'staseraintvratings.db'
+    _conn = None
 
     @classmethod
     def conn(cls):
-        if "db" not in g:
-            g.db = sqlite3.connect(cls._db_name)
-            g.db.row_factory = sqlite3.Row
+        if cls._conn is None:
+            cls._conn = sqlite3.connect(cls._db_name)
+            cls._conn.row_factory = sqlite3.Row
 
-        return g.db
+        return cls._conn
 
     @classmethod
     def close_db(cls, e=None):
-        db = g.pop('db', None)
+        db = cls._conn
 
         if db is not None:
             db.close()

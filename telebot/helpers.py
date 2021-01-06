@@ -1,12 +1,19 @@
 import json
+import os
 import re
+import sqlite3
+from datetime import datetime
+
+import click
+from flask import current_app, g
+from json import JSONEncoder, JSONDecoder
 from typing import Optional
 from urllib import parse
 
 import requests
 from bs4 import BeautifulSoup
+from flask.cli import with_appcontext
 
-from telebot.credentials import OMDB_API_KEY
 
 BASE_URL = "https://www.staseraintv.com/"
 READ_URLS = [BASE_URL, BASE_URL + "index2.html", BASE_URL + "index3.html"]
@@ -79,112 +86,203 @@ class Show:
                + (f"\n{rating_str}\n" if rating_str else "\n")
 
 
-def get_imdb_id(title: str):
-    if not title:
-        return None
-
-    url = f"https://sg.media-imdb.com/suggests/{title.lower()[0]}/{parse.quote(title)}.json"
-    response = requests.get(url)
-    if response.status_code != 200:
-        return None
-
-    try:
-        data = json.loads(re.search(r"\((.+)\)", response.text).group(1))
-        if data.get("d", []):
-            return data["d"][0]["id"]
-    except Exception:
-        return None
+class ShowEncoder(JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Show):
+            return {
+                "title": o.title,
+                "time": o.time,
+                "genre": o.genre,
+                "channel": o.channel,
+                "imdb_id": o.imdb_id,
+                "rating": o.rating,
+            }
+        return super().default(o)
 
 
-def get_rating(imdb_id: str):
-    if not imdb_id:
-        return None
-
-    url = f"http://www.omdbapi.com/?apikey={OMDB_API_KEY}&i={imdb_id}"
-    response = requests.get(url)
-    if response.status_code != 200:
-        return None
-
-    for rating in response.json().get("Ratings", []):
-        if rating["Source"] == "Internet Movie Database":
-            return rating["Value"].split("/")[0].strip()
+class ShowDecoder(JSONDecoder):
+    def decode(self, o, *args, **kwargs):
+        if isinstance(o, str):
+            o = super().decode(o, *args, **kwargs)
+        if isinstance(o, list):
+            return [self.decode(el) for el in o]
+        if "title" not in o:
+            return o
+        return Show(**o)
 
 
-def clean_title(title):
-    return re.sub(r"\(.+\)", "", title).strip()
+class WebHelper:
 
+    @classmethod
+    def get_shows_from_web(cls):
+        shows = []
+        for url in READ_URLS:
+            response = requests.get(url)
+            if response.status_code != 200:
+                continue
+            soup = BeautifulSoup(response.text, 'html.parser')
+            for element in soup.find_all(*BOX_ARGS):
+                raw_title = cls._get_text_or_empty(element.find(*TITLE_ARGS))
+                if not raw_title:
+                    continue
 
-def get_time(box):
-    return _get_text_or_empty(box.find(*TIME_ARGS)).strip()
+                show = Show(
+                    title=cls._clean_title(raw_title),
+                    channel=cls._get_channel(element),
+                    genre=cls._get_genre(raw_title),
+                    time=cls._get_time(element),
+                )
+                cls._enrich_with_rating(show, element)
+                shows.append(show)
 
+        return shows
 
-def get_genre(title):
-    match = re.search(r"\((.+)\)", title)
-    if match:
-        return match.group(1).strip()
-    return ""
+    @classmethod
+    def _get_imdb_id(cls, title: str):
+        if not title:
+            return None
 
-
-def get_channel(box):
-    full_text = _get_text_or_empty(box.find(*CHANNEL_ARGS))
-    return full_text.strip().split("   ")[0].strip()
-
-
-def get_details_page(element):
-    for link in element.find_all("a"):
-        if link.text.strip() == "[continua]":
-            return parse.urljoin(BASE_URL, link["href"])
-    return None
-
-
-def get_year(url):
-    response = requests.get(url)
-    if response.status_code != 200:
-        return ""
-    soup = BeautifulSoup(response.text, 'html.parser')
-    details = soup.find("div", {"class": "schedatavbox"}).find_all("li")
-    for item in details:
-        if "Anno" not in item.text:
-            continue
-        return item.text.split("Anno:")[1].strip()
-    return ""
-
-
-def enrich_with_rating(show, element):
-    if not show.is_movie():
-        return
-    search_title = show.title
-    details_page = get_details_page(element)
-    if details_page:
-        search_title += " " + get_year(details_page)
-
-    show.imdb_id = get_imdb_id(search_title)
-    show.rating = get_rating(show.imdb_id)
-
-
-def _get_text_or_empty(element):
-    return element.text if element else ""
-
-
-def get_shows():
-    shows = []
-    for url in READ_URLS:
+        url = f"https://sg.media-imdb.com/suggests/{title.lower()[0]}/{parse.quote(title)}.json"
         response = requests.get(url)
         if response.status_code != 200:
-            continue
+            return None
+
+        try:
+            data = json.loads(re.search(r"\((.+)\)", response.text).group(1))
+            if data.get("d", []):
+                return data["d"][0]["id"]
+        except Exception:
+            return None
+
+    @classmethod
+    def _get_rating(cls, imdb_id: str):
+        if not imdb_id:
+            return None
+
+        url = f"http://www.omdbapi.com/?apikey={os.environ['OMDB_API_KEY']}&i={imdb_id}"
+        response = requests.get(url)
+        if response.status_code != 200:
+            return None
+
+        for rating in response.json().get("Ratings", []):
+            if rating["Source"] == "Internet Movie Database":
+                return rating["Value"].split("/")[0].strip()
+
+    @classmethod
+    def _clean_title(cls, title):
+        return re.sub(r"\(.+\)", "", title).strip()
+
+    @classmethod
+    def _get_time(cls, box):
+        return cls._get_text_or_empty(box.find(*TIME_ARGS)).strip()
+
+    @classmethod
+    def _get_genre(cls, title):
+        match = re.search(r"\((.+)\)", title)
+        if match:
+            return match.group(1).strip()
+        return ""
+
+    @classmethod
+    def _get_channel(cls, box):
+        full_text = cls._get_text_or_empty(box.find(*CHANNEL_ARGS))
+        return full_text.strip().split("   ")[0].strip()
+
+    @classmethod
+    def _get_details_page(cls, element):
+        for link in element.find_all("a"):
+            if link.text.strip() == "[continua]":
+                return parse.urljoin(BASE_URL, link["href"])
+        return None
+
+    @classmethod
+    def _get_year(cls, url):
+        response = requests.get(url)
+        if response.status_code != 200:
+            return ""
         soup = BeautifulSoup(response.text, 'html.parser')
-        for element in soup.find_all(*BOX_ARGS):
-            raw_title = _get_text_or_empty(element.find(*TITLE_ARGS))
-            if not raw_title:
+        details = soup.find("div", {"class": "schedatavbox"}).find_all("li")
+        for item in details:
+            if "Anno" not in item.text:
                 continue
+            return item.text.split("Anno:")[1].strip()
+        return ""
 
-            show = Show(
-                title=clean_title(raw_title),
-                channel=get_channel(element),
-                genre=get_genre(raw_title),
-                time=get_time(element),
-            )
-            enrich_with_rating(show, element)
-            shows.append(show)
+    @classmethod
+    def _enrich_with_rating(cls, show: Show, element):
+        if not show.is_movie():
+            return
+        search_title = show.title
+        details_page = cls._get_details_page(element)
+        if details_page:
+            search_title += " " + cls._get_year(details_page)
 
-    return shows
+        show.imdb_id = cls._get_imdb_id(search_title)
+        show.rating = cls._get_rating(show.imdb_id)
+
+    @classmethod
+    def _get_text_or_empty(cls, element):
+        return element.text if element else ""
+
+
+class DBHelper:
+    _db_name = 'staseraintvratings.db'
+
+    @classmethod
+    def conn(cls):
+        if "db" not in g:
+            g.db = sqlite3.connect(current_app.config['DATABASE'])
+            g.db.row_factory = sqlite3.Row
+
+        return g.db
+
+    @classmethod
+    def close_db(cls, e=None):
+        db = g.pop('db', None)
+
+        if db is not None:
+            db.close()
+
+    @classmethod
+    def init_db(cls):
+        c = cls.conn().cursor()
+        c.execute('CREATE TABLE IF NOT EXISTS show_data (show_date VARCHAR, shows TEXT)')
+        cls.conn().commit()
+
+    @classmethod
+    def _today(cls):
+        return datetime.now().isoformat()[:10]
+
+    @classmethod
+    def get_data_from_db(cls):
+        c = cls.conn().cursor()
+        c.execute('SELECT shows FROM show_data WHERE show_date = ?', (cls._today(),))
+        try:
+            data = c.fetchone()[0]
+            return json.loads(data, cls=ShowDecoder)
+        except Exception:
+            return None
+
+    @classmethod
+    def set_data_to_db(cls, data):
+        c = cls.conn().cursor()
+        c.execute(f'INSERT INTO show_data (show_date, shows) VALUES (?, ?)',
+                  (cls._today(), json.dumps(data, cls=ShowEncoder),))
+        cls.conn().commit()
+
+
+def get_today_shows():
+    db_data = DBHelper.get_data_from_db()
+    if db_data:
+        return db_data
+    data = WebHelper.get_shows_from_web()
+    DBHelper.set_data_to_db(data)
+    return data
+
+
+@click.command('init-db')
+@with_appcontext
+def init_db_command():
+    """Clear the existing data and create new tables."""
+    DBHelper.init_db()
+    click.echo('Initialized the database.')

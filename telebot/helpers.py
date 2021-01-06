@@ -243,6 +243,7 @@ class DBHelper:
 
         if db is not None:
             db.close()
+            cls._conn = None
 
     @classmethod
     def init_db(cls):

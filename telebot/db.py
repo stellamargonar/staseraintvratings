@@ -38,7 +38,7 @@ class DBHelper:
         from telebot.show import ShowDecoder
 
         c = cls.conn().cursor()
-        c.execute('SELECT shows FROM show_data WHERE show_date = ?', (cls._today(),))
+        c.execute('SELECT shows FROM show_data WHERE show_date = %s', (cls._today(),))
         try:
             data = c.fetchone()[0]
             return json.loads(data, cls=ShowDecoder)
@@ -50,6 +50,6 @@ class DBHelper:
         from telebot.show import ShowEncoder
 
         c = cls.conn().cursor()
-        c.execute(f'INSERT INTO show_data (show_date, shows) VALUES (?, ?)',
+        c.execute(f'INSERT INTO show_data (show_date, shows) VALUES (%s, %s)',
                   (cls._today(), json.dumps(data, cls=ShowEncoder),))
         cls.conn().commit()

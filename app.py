@@ -47,6 +47,17 @@ def do_shows(chat_id):
     bot.sendMessage(chat_id=chat_id, text=text, parse_mode="html")
 
 
+def do_top_n(chat_id, n):
+    shows = get_today_shows()
+    shows.sort(key=lambda x: -x.float_rating)
+    text = "\n".join([
+        show.to_message()
+        for show in shows()
+        if show.is_movie()
+    ][:n])
+    bot.sendMessage(chat_id=chat_id, text=text, parse_mode="html")
+
+
 def create_app(*args, **kwargs):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
@@ -69,18 +80,24 @@ def create_app(*args, **kwargs):
         msg_id = message.message_id
         text = message.text.encode("utf-8").decode()
 
-        # try:
-        if text == "/start":
-            do_welcome(chat_id, msg_id)
+        try:
+            if text == "/start":
+                do_welcome(chat_id, msg_id)
 
-        elif text == "/programmazione":
-            do_shows(chat_id)
+            elif text == "/programmazione":
+                do_shows(chat_id)
 
-        elif text == "/top":
-            do_best_shows(chat_id)
+            elif text == "/top":
+                do_best_shows(chat_id)
 
-        # except Exception:
-        #     bot.sendMessage(chat_id=chat_id, text="😔 Mi dispiace, si è verificato un errore. Riprova più tardi.")
+            elif text == "/top5":
+                do_top_n(chat_id, 5)
+
+            elif text == "/top3":
+                do_top_n(chat_id, 3)
+
+        except Exception:
+            bot.sendMessage(chat_id=chat_id, text="😔 Mi dispiace, si è verificato un errore. Riprova più tardi.")
 
         return "ok"
 

@@ -224,8 +224,10 @@ class ShowHelper:
 def get_today_shows():
     db_data = DBHelper.get_data_from_db()
     if db_data:
+        print("DEBUG > read db data")
         return db_data
     data = ShowHelper.get_shows_from_web()
+    print("DEBUG > Read from the web")
     DBHelper.set_data_to_db(data)
     return data
 

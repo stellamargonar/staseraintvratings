@@ -69,18 +69,18 @@ def create_app(*args, **kwargs):
         msg_id = message.message_id
         text = message.text.encode("utf-8").decode()
 
-        try:
-            if text == "/start":
-                do_welcome(chat_id, msg_id)
+        # try:
+        if text == "/start":
+            do_welcome(chat_id, msg_id)
 
-            elif text == "/programmazione":
-                do_shows(chat_id)
+        elif text == "/programmazione":
+            do_shows(chat_id)
 
-            elif text == "/top":
-                do_best_shows(chat_id)
+        elif text == "/top":
+            do_best_shows(chat_id)
 
-        except Exception:
-            bot.sendMessage(chat_id=chat_id, text="😔 Mi dispiace, si è verificato un errore. Riprova più tardi.")
+        # except Exception:
+        #     bot.sendMessage(chat_id=chat_id, text="😔 Mi dispiace, si è verificato un errore. Riprova più tardi.")
 
         return "ok"
 

@@ -29,6 +29,9 @@ class DBHelper:
         c.execute('CREATE TABLE IF NOT EXISTS show_data (show_date VARCHAR, shows TEXT)')
         self.conn().commit()
 
+        c.execute('DELETE FROM show_data where show_date < %s', (self._today(), ))
+        self.conn().commit()
+
     @classmethod
     def _today(cls):
         return datetime.now().isoformat()[:10]

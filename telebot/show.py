@@ -1,19 +1,16 @@
 import json
 import os
 import re
-import sqlite3
-from datetime import datetime
-
-import click
-from flask import g
-from json import JSONEncoder, JSONDecoder
+from json import JSONDecoder, JSONEncoder
 from typing import Optional
 from urllib import parse
 
+import click
 import requests
 from bs4 import BeautifulSoup
 from flask.cli import with_appcontext
 
+from telebot.db import DBHelper
 
 BASE_URL = "https://www.staseraintv.com/"
 READ_URLS = [BASE_URL, BASE_URL + "index2.html", BASE_URL + "index3.html"]
@@ -111,8 +108,7 @@ class ShowDecoder(JSONDecoder):
         return Show(**o)
 
 
-class WebHelper:
-
+class ShowHelper:
     @classmethod
     def get_shows_from_web(cls):
         shows = []
@@ -225,59 +221,11 @@ class WebHelper:
         return element.text if element else ""
 
 
-class DBHelper:
-    _db_name = 'staseraintvratings.db'
-    _conn = None
-
-    @classmethod
-    def conn(cls):
-        if cls._conn is None:
-            cls._conn = sqlite3.connect(cls._db_name)
-            cls._conn.row_factory = sqlite3.Row
-
-        return cls._conn
-
-    @classmethod
-    def close_db(cls, e=None):
-        db = cls._conn
-
-        if db is not None:
-            db.close()
-            cls._conn = None
-
-    @classmethod
-    def init_db(cls):
-        c = cls.conn().cursor()
-        c.execute('CREATE TABLE IF NOT EXISTS show_data (show_date VARCHAR, shows TEXT)')
-        cls.conn().commit()
-
-    @classmethod
-    def _today(cls):
-        return datetime.now().isoformat()[:10]
-
-    @classmethod
-    def get_data_from_db(cls):
-        c = cls.conn().cursor()
-        c.execute('SELECT shows FROM show_data WHERE show_date = ?', (cls._today(),))
-        try:
-            data = c.fetchone()[0]
-            return json.loads(data, cls=ShowDecoder)
-        except Exception:
-            return None
-
-    @classmethod
-    def set_data_to_db(cls, data):
-        c = cls.conn().cursor()
-        c.execute(f'INSERT INTO show_data (show_date, shows) VALUES (?, ?)',
-                  (cls._today(), json.dumps(data, cls=ShowEncoder),))
-        cls.conn().commit()
-
-
 def get_today_shows():
     db_data = DBHelper.get_data_from_db()
     if db_data:
         return db_data
-    data = WebHelper.get_shows_from_web()
+    data = ShowHelper.get_shows_from_web()
     DBHelper.set_data_to_db(data)
     return data
 

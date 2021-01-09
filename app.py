@@ -3,7 +3,8 @@ import os
 import telegram
 from flask import Flask, request
 
-from telebot.helpers import get_today_shows, DBHelper, init_db_command
+from telebot.db import DBHelper
+from telebot.show import get_today_shows, init_db_command
 
 TOKEN = os.environ["BOT_TOKEN"]
 bot = telegram.Bot(token=TOKEN)
@@ -12,7 +13,6 @@ bot = telegram.Bot(token=TOKEN)
 def init_app(app):
     app.teardown_appcontext(DBHelper.close_db)
     app.cli.add_command(init_db_command)
-    DBHelper.init_db()
 
 
 def do_welcome(chat_id, msg_id):

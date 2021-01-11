@@ -84,7 +84,7 @@ def create_app(*args, **kwargs):
             if text == "/start":
                 do_welcome(chat_id, msg_id)
 
-            elif text == "/programmazione":
+            elif text == "/programmazione" or text == "/list":
                 do_shows(chat_id)
 
             elif text == "/top":

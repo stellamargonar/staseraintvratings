@@ -27,6 +27,7 @@ class DBHelper:
     def init_db(self):
         c = self.conn().cursor()
         c.execute('CREATE TABLE IF NOT EXISTS show_data (show_date VARCHAR, shows TEXT)')
+        c.execute('CREATE TABLE IF NOT EXISTS monitoring(day date,' + ','.join(f'req_at_{i} int' for i in range(24)) + ')')
         self.conn().commit()
 
         c.execute('DELETE FROM show_data where show_date < %s', (self._today(), ))
@@ -53,6 +54,21 @@ class DBHelper:
         from telebot.show import ShowEncoder
 
         c = cls.conn().cursor()
-        c.execute(f'INSERT INTO show_data (show_date, shows) VALUES (%s, %s)',
+        c.execute('INSERT INTO show_data (show_date, shows) VALUES (%s, %s)',
                   (cls._today(), json.dumps(data, cls=ShowEncoder),))
+        cls.conn().commit()
+
+    @classmethod
+    def monitor_request(cls):
+        c = cls.conn().cursor()
+
+        col_name = "req_at_{}".format(datetime.now().hour)
+        c.execute(f'select {col_name} from monitoring WHERE day = %s', (cls._today(), ))
+
+        try:
+            current_value = c.fetchone()[0]
+        except Exception:
+            current_value = 0
+
+        c.execute(f'INSERT INTO monitoring(day, {col_name}) VALUES (%s, %s)', (cls._today(), current_value + 1))
         cls.conn().commit()

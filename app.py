@@ -99,6 +99,12 @@ def create_app(*args, **kwargs):
         except Exception:
             bot.sendMessage(chat_id=chat_id, text="😔 Mi dispiace, si è verificato un errore. Riprova più tardi.")
 
+        try:
+            DBHelper.monitor_request()
+        except Exception as exp:
+            print(exp)
+            pass
+
         return "ok"
 
     @app.route("/set_webhook", methods=["GET", "POST"])

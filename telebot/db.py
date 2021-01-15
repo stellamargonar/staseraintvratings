@@ -67,8 +67,13 @@ class DBHelper:
 
         try:
             current_value = c.fetchone()[0]
+            row_exists = True
         except Exception:
+            row_exists = False
             current_value = 0
 
-        c.execute(f'INSERT INTO monitoring(day, {col_name}) VALUES (%s, %s)', (cls._today(), current_value + 1))
+        if row_exists:
+            c.execute(f'UPDATE monitoring SET {col_name} = %s WHERE day = %s', (current_value + 1, cls._today()))
+        else:
+            c.execute(f'INSERT INTO monitoring(day, {col_name}) VALUES (%s, %s)', (cls._today(), current_value + 1))
         cls.conn().commit()

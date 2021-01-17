@@ -57,6 +57,10 @@ def do_top_n(chat_id, n):
     bot.sendMessage(chat_id=chat_id, text=text, parse_mode="html")
 
 
+def do_report_monitoring(chat_id):
+    bot.sendMessage(chat_id=chat_id, text=DBHelper.get_monitoring_report(), parse_mode="html")
+
+
 def create_app(*args, **kwargs):
     app = Flask(__name__, instance_relative_config=True)
     init_app(app)
@@ -89,6 +93,9 @@ def create_app(*args, **kwargs):
 
             elif text == f"/refresh {settings.ADMIN_SECRET}":
                 refresh_today_shows()
+
+            elif text == f"/report {settings.ADMIN_SECRET}":
+                do_report_monitoring(chat_id)
 
         except Exception:
             bot.sendMessage(chat_id=chat_id, text="😔 Mi dispiace, si è verificato un errore. Riprova più tardi.")

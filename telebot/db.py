@@ -31,7 +31,7 @@ class DBHelper:
         c.execute('CREATE TABLE IF NOT EXISTS monitoring(day date,' + ','.join(f'req_at_{i} int' for i in range(24)) + ')')
         cls.conn().commit()
 
-        c.execute('DELETE FROM show_data where show_date < %s', (self._today(), ))
+        c.execute('DELETE FROM show_data where show_date < %s', (cls._today(), ))
         cls.conn().commit()
 
     @classmethod
@@ -55,6 +55,8 @@ class DBHelper:
         from telebot.show import ShowEncoder
 
         c = cls.conn().cursor()
+        c.execute('DELETE FROM show_data WHERE show_date <= %s', (cls._today(), ))
+
         c.execute('INSERT INTO show_data (show_date, shows) VALUES (%s, %s)',
                   (cls._today(), json.dumps(data, cls=ShowEncoder),))
         cls.conn().commit()
@@ -66,15 +68,41 @@ class DBHelper:
         col_name = "req_at_{}".format(datetime.now().hour)
         c.execute(f'select {col_name} from monitoring WHERE day = %s', (cls._today(), ))
 
-        try:
-            current_value = c.fetchone()[0]
-            row_exists = True
-        except Exception:
+        row = c.fetchone()
+        if row is None:
             row_exists = False
             current_value = 0
+        else:
+            current_value = row[0]
+            row_exists = True
 
         if row_exists:
             c.execute(f'UPDATE monitoring SET {col_name} = %s WHERE day = %s', (current_value + 1, cls._today()))
         else:
             c.execute(f'INSERT INTO monitoring(day, {col_name}) VALUES (%s, %s)', (cls._today(), current_value + 1))
         cls.conn().commit()
+
+    @classmethod
+    def _sum_all_col(cls):
+        return '+'.join(f'COALESCE(req_at_{i})' for i in range(24))
+
+    @classmethod
+    def get_monitoring_report(cls) -> str:
+        c = cls.conn().cursor()
+
+        c.execute(f'SELECT {cls._sum_all_col()} FROM show_data GROUP BY show_date WHERE day = %s', (cls._today(), ))
+        row = c.fetchone()
+        total = row[0] if row is not None else 0
+
+        req_at_hour = {}
+        c.execute(f'SELECT {",".join(f"req_at_{i}" for i in range(24))} FROM show_data WHERE show_date = %s', (cls._today(), ))
+        row = c.fetchone()
+        for i in row:
+            if row[i] is not None and row[i] > 0:
+                req_at_hour[i] = row[i]
+
+        text = f"<b>Richieste totali: {total}</b>"
+        if len(req_at_hour):
+            text += "\n".join(f"<li>{hour}: {n_req}</li>" for hour, n_req in req_at_hour.items())
+
+        return text

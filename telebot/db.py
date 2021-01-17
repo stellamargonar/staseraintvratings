@@ -36,7 +36,7 @@ class DBHelper:
 
     @classmethod
     def _today(cls):
-        return datetime.now().isoformat()[:10]
+        return datetime.now(settings.TIMEZONE).isoformat()[:10]
 
     @classmethod
     def get_data_from_db(cls):
@@ -65,7 +65,7 @@ class DBHelper:
     def monitor_request(cls):
         c = cls.conn().cursor()
 
-        col_name = "req_at_{}".format(datetime.now().hour)
+        col_name = "req_at_{}".format(datetime.now(settings.TIMEZONE).hour)
         c.execute(f'select COALESCE({col_name}, 0) from monitoring WHERE day = %s', (cls._today(), ))
 
         row = c.fetchone()

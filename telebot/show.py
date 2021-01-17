@@ -1,5 +1,4 @@
 import json
-import os
 import re
 from json import JSONDecoder, JSONEncoder
 from typing import Optional
@@ -10,6 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 from flask.cli import with_appcontext
 
+import settings
 from telebot.db import DBHelper
 
 BASE_URL = "https://www.staseraintv.com/"
@@ -155,7 +155,7 @@ class ShowHelper:
         if not imdb_id:
             return None
 
-        url = f"http://www.omdbapi.com/?apikey={os.environ['OMDB_API_KEY']}&i={imdb_id}"
+        url = f"http://www.omdbapi.com/?apikey={settings.OMDB_API_KEY}&i={imdb_id}"
         response = requests.get(url)
         if response.status_code != 200:
             return None
@@ -228,6 +228,11 @@ def get_today_shows():
     data = ShowHelper.get_shows_from_web()
     DBHelper.set_data_to_db(data)
     return data
+
+
+def refresh_today_shows():
+    data = ShowHelper.get_shows_from_web()
+    DBHelper.set_data_to_db(data)
 
 
 @click.command('init-db')

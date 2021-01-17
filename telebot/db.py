@@ -1,9 +1,10 @@
 import json
-import os
 from datetime import datetime
 
 import psycopg2
 from flask import g
+
+import settings
 
 
 class DBHelper:
@@ -13,25 +14,25 @@ class DBHelper:
     @classmethod
     def conn(cls):
         if "db" not in g:
-            g.db = psycopg2.connect(os.environ["DATABASE_URL"])
+            g.db = psycopg2.connect(settings.DATABASE_URL)
         return g.db
 
     @classmethod
-    def close_db(self, e=None):
+    def close_db(cls, e=None):
         db = g.pop("db", None)
 
         if db is not None:
             db.close()
 
     @classmethod
-    def init_db(self):
-        c = self.conn().cursor()
+    def init_db(cls):
+        c = cls.conn().cursor()
         c.execute('CREATE TABLE IF NOT EXISTS show_data (show_date VARCHAR, shows TEXT)')
         c.execute('CREATE TABLE IF NOT EXISTS monitoring(day date,' + ','.join(f'req_at_{i} int' for i in range(24)) + ')')
-        self.conn().commit()
+        cls.conn().commit()
 
         c.execute('DELETE FROM show_data where show_date < %s', (self._today(), ))
-        self.conn().commit()
+        cls.conn().commit()
 
     @classmethod
     def _today(cls):

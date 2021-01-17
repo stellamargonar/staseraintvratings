@@ -1,13 +1,12 @@
-import os
-
 import telegram
 from flask import Flask, request
 
-from telebot.db import DBHelper
-from telebot.show import get_today_shows, init_db_command
+import settings
 
-TOKEN = os.environ["BOT_TOKEN"]
-bot = telegram.Bot(token=TOKEN)
+from telebot.db import DBHelper
+from telebot.show import get_today_shows, init_db_command, refresh_today_shows
+
+bot = telegram.Bot(token=settings.TOKEN)
 
 
 def init_app(app):
@@ -60,17 +59,9 @@ def do_top_n(chat_id, n):
 
 def create_app(*args, **kwargs):
     app = Flask(__name__, instance_relative_config=True)
-    app.config.from_mapping(
-        DATABASE=os.path.join(app.instance_path, 'staseraintvratings.sqlite'),
-    )
-    try:
-        os.makedirs(app.instance_path)
-    except OSError:
-        pass
-
     init_app(app)
 
-    @app.route(f"/{TOKEN}", methods=["POST"])
+    @app.route(f"/{settings.TOKEN}", methods=["POST"])
     def respond():
         message = telegram.Update.de_json(request.get_json(force=True), bot).effective_message
         if message is None:
@@ -96,6 +87,9 @@ def create_app(*args, **kwargs):
             elif text == "/top3":
                 do_top_n(chat_id, 3)
 
+            elif text == f"/refresh {settings.ADMIN_SECRET}":
+                refresh_today_shows()
+
         except Exception:
             bot.sendMessage(chat_id=chat_id, text="😔 Mi dispiace, si è verificato un errore. Riprova più tardi.")
 
@@ -109,7 +103,7 @@ def create_app(*args, **kwargs):
 
     @app.route("/set_webhook", methods=["GET", "POST"])
     def set_webhook():
-        s = bot.setWebhook(f"{os.environ['APP_BASE_URL']}{TOKEN}")
+        s = bot.setWebhook(f"{settings.APP_BASE_URL}{settings.TOKEN}")
         if s:
             return "webhook setup ok"
         else:

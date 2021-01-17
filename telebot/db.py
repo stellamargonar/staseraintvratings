@@ -102,6 +102,6 @@ class DBHelper:
 
         text = f"<b>Richieste totali: {total}</b>"
         if len(req_at_hour):
-            text += "\n".join(f"<li>{hour}: {n_req}</li>" for hour, n_req in req_at_hour.items())
+            text += "\n  ".join(f"{hour}: {n_req}" for hour, n_req in req_at_hour.items())
 
         return text

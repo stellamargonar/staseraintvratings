@@ -110,7 +110,7 @@ class DBHelper:
             if val is not None and val > 0:
                 req_at_hour[i] = val
                 total += val
-        text = f"\n'n<b>Richieste totali: {total}</b>\n  "
+        text += f"\n\n<b>Richieste totali: {total}</b>\n  "
         if len(req_at_hour):
             text += "\n  ".join(f"🕐 {hour}: {n_req}" for hour, n_req in req_at_hour.items())
 

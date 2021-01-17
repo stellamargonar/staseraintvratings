@@ -90,16 +90,15 @@ class DBHelper:
     def get_monitoring_report(cls) -> str:
         c = cls.conn().cursor()
 
-        c.execute(f'SELECT {cls._sum_all_col()} FROM monitoring GROUP BY day WHERE day = %s', (cls._today(), ))
+        c.execute(f'SELECT {",".join(f"COALESCE(req_at_{i}, 0)" for i in range(24))} FROM monitoring WHERE day = %s', (cls._today(), ))
         row = c.fetchone()
-        total = row[0] if row is not None else 0
 
         req_at_hour = {}
-        c.execute(f'SELECT {",".join(f"req_at_{i}" for i in range(24))} FROM monitoring WHERE day = %s', (cls._today(), ))
-        row = c.fetchone()
+        total = 0
         for i in row:
             if row[i] is not None and row[i] > 0:
                 req_at_hour[i] = row[i]
+                total += row[i]
 
         text = f"<b>Richieste totali: {total}</b>"
         if len(req_at_hour):

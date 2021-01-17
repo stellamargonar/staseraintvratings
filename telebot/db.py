@@ -92,16 +92,26 @@ class DBHelper:
 
         c.execute(f'SELECT {",".join(f"COALESCE(req_at_{i}, 0)" for i in range(24))} FROM monitoring WHERE day = %s', (cls._today(), ))
         row = c.fetchone()
-
         req_at_hour = {}
         total = 0
         for i, val in enumerate(row):
             if val is not None and val > 0:
                 req_at_hour[i] = val
                 total += val
-
-        text = f"<b>Richieste totali: {total}</b>\n"
+        text = f"<b>Richieste di oggi: {total}</b>\n  "
         if len(req_at_hour):
-            text += "\n  ".join(f"{hour}: {n_req}" for hour, n_req in req_at_hour.items())
+            text += "\n  ".join(f"🕐 {hour}: {n_req}" for hour, n_req in req_at_hour.items())
+
+        c.execute(f'SELECT {",".join(f"SUM(req_at_{i})" for i in range(24))} FROM monitoring')
+        row = c.fetchone()
+        req_at_hour = {}
+        total = 0
+        for i, val in enumerate(row):
+            if val is not None and val > 0:
+                req_at_hour[i] = val
+                total += val
+        text = f"\n'n<b>Richieste totali: {total}</b>\n  "
+        if len(req_at_hour):
+            text += "\n  ".join(f"🕐 {hour}: {n_req}" for hour, n_req in req_at_hour.items())
 
         return text

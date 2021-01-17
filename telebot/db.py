@@ -66,7 +66,7 @@ class DBHelper:
         c = cls.conn().cursor()
 
         col_name = "req_at_{}".format(datetime.now().hour)
-        c.execute(f'select {col_name} from monitoring WHERE day = %s', (cls._today(), ))
+        c.execute(f'select COALESCE({col_name}) from monitoring WHERE day = %s', (cls._today(), ))
 
         row = c.fetchone()
         if row is None:

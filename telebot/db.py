@@ -95,12 +95,12 @@ class DBHelper:
 
         req_at_hour = {}
         total = 0
-        for i in row:
-            if row[i] is not None and row[i] > 0:
-                req_at_hour[i] = row[i]
-                total += row[i]
+        for i, val in enumerate(row):
+            if val is not None and val > 0:
+                req_at_hour[i] = val
+                total += val
 
-        text = f"<b>Richieste totali: {total}</b>"
+        text = f"<b>Richieste totali: {total}</b>\n"
         if len(req_at_hour):
             text += "\n  ".join(f"{hour}: {n_req}" for hour, n_req in req_at_hour.items())
 

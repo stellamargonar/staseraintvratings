@@ -90,12 +90,12 @@ class DBHelper:
     def get_monitoring_report(cls) -> str:
         c = cls.conn().cursor()
 
-        c.execute(f'SELECT {cls._sum_all_col()} FROM show_data GROUP BY show_date WHERE day = %s', (cls._today(), ))
+        c.execute(f'SELECT {cls._sum_all_col()} FROM monitoring GROUP BY day WHERE day = %s', (cls._today(), ))
         row = c.fetchone()
         total = row[0] if row is not None else 0
 
         req_at_hour = {}
-        c.execute(f'SELECT {",".join(f"req_at_{i}" for i in range(24))} FROM show_data WHERE show_date = %s', (cls._today(), ))
+        c.execute(f'SELECT {",".join(f"req_at_{i}" for i in range(24))} FROM monitoring WHERE day = %s', (cls._today(), ))
         row = c.fetchone()
         for i in row:
             if row[i] is not None and row[i] > 0:

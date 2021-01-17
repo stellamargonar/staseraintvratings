@@ -66,7 +66,7 @@ class DBHelper:
         c = cls.conn().cursor()
 
         col_name = "req_at_{}".format(datetime.now().hour)
-        c.execute(f'select COALESCE({col_name}) from monitoring WHERE day = %s', (cls._today(), ))
+        c.execute(f'select COALESCE({col_name}, 0) from monitoring WHERE day = %s', (cls._today(), ))
 
         row = c.fetchone()
         if row is None:
@@ -84,7 +84,7 @@ class DBHelper:
 
     @classmethod
     def _sum_all_col(cls):
-        return '+'.join(f'COALESCE(req_at_{i})' for i in range(24))
+        return '+'.join(f'COALESCE(req_at_{i}, 0)' for i in range(24))
 
     @classmethod
     def get_monitoring_report(cls) -> str:

@@ -132,10 +132,10 @@ class DBHelper:
             row_val = max_nr - i
             row_chars = []
             for k in sorted(data.keys()):
-                if data[k] <= row_val:
+                if data[k] < row_val:
                     row_chars.append("  ")
                 else:
-                    row_chars.append("◼️ ")
-            rows.append("  ".join(row_chars))
-        rows.append("  ".join(str(k).zfill(2) for k in sorted(data.keys())))
+                    row_chars.append("* ")
+            rows.append(" ".join(row_chars))
+        rows.append(" ".join(str(k).zfill(2) for k in sorted(data.keys())))
         return "<pre>" + "\n".join(rows) + "</pre>"

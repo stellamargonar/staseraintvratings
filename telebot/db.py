@@ -100,8 +100,7 @@ class DBHelper:
                     req_at_hour[i] = val
                     total += val
         text = f"<b>Richieste di oggi: {total}</b>\n  "
-        if len(req_at_hour):
-            text += "\n  ".join(f"🕐 {hour}: {n_req}" for hour, n_req in req_at_hour.items())
+        text += cls.time_histogram(req_at_hour)
 
         c.execute(f'SELECT {",".join(f"SUM(req_at_{i})" for i in range(24))} FROM monitoring')
         row = c.fetchone()
@@ -113,7 +112,26 @@ class DBHelper:
                     req_at_hour[i] = val
                     total += val
         text += f"\n\n<b>Richieste totali: {total}</b>\n  "
-        if len(req_at_hour):
-            text += "\n  ".join(f"🕐 {hour}: {n_req}" for hour, n_req in req_at_hour.items())
+        text += cls.time_histogram(req_at_hour)
 
         return text
+
+    @classmethod
+    def time_histogram(cls, data: dict) -> str:
+        max_nr = 0
+        for k, v in data.items():
+            if v > max_nr:
+                max_nr = v
+
+        rows = []
+        for i in range(max_nr):
+            row_val = max_nr - i
+            row_str = ""
+            for k in sorted(data.keys()):
+                if data[k] < row_val:
+                    row_str += "    "
+                else:
+                    row_str += "◼ ︎︎  "
+            rows.append(row_str)
+        rows.append("  ".join(str(k).zfill(2) for k in sorted(data.keys())))
+        return "<pre>" + "\n".join(rows) + "</pre>"

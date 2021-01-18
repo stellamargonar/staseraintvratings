@@ -128,14 +128,14 @@ class DBHelper:
                 max_nr = v
 
         rows = []
-        for i in range(max_nr - 1):
+        for i in range(max_nr):
             row_val = max_nr - i
             row_str = ""
             for k in sorted(data.keys()):
                 if data[k] < row_val:
                     row_str += "    "
                 else:
-                    row_str += " ◼ ︎︎  "
+                    row_str += " ◼ ︎︎ "
             rows.append(row_str)
         rows.append("  ".join(str(k).zfill(2) for k in sorted(data.keys())))
         return "<pre>" + "\n".join(rows) + "</pre>"

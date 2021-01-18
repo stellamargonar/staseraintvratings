@@ -99,6 +99,8 @@ class DBHelper:
                 if val is not None and val > 0:
                     req_at_hour[i] = val
                     total += val
+                else:
+                    req_at_hour[i] = 0
         text = f"<b>Richieste di oggi: {total}</b>\n  "
         text += cls.time_histogram(req_at_hour)
 
@@ -111,6 +113,8 @@ class DBHelper:
                 if val is not None and val > 0:
                     req_at_hour[i] = val
                     total += val
+                else:
+                    req_at_hour[i] = 0
         text += f"\n\n<b>Richieste totali: {total}</b>\n  "
         text += cls.time_histogram(req_at_hour)
 
@@ -124,14 +128,14 @@ class DBHelper:
                 max_nr = v
 
         rows = []
-        for i in range(max_nr):
+        for i in range(max_nr - 1):
             row_val = max_nr - i
             row_str = ""
             for k in sorted(data.keys()):
                 if data[k] < row_val:
                     row_str += "    "
                 else:
-                    row_str += "◼ ︎︎  "
+                    row_str += " ◼ ︎︎  "
             rows.append(row_str)
         rows.append("  ".join(str(k).zfill(2) for k in sorted(data.keys())))
         return "<pre>" + "\n".join(rows) + "</pre>"

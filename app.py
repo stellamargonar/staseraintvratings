@@ -77,6 +77,7 @@ def create_app(*args, **kwargs):
         msg_id = message.message_id
         text = message.text.encode("utf-8").decode()
 
+        do_monitoring = True
         try:
             if text == "/start":
                 do_welcome(chat_id, msg_id)
@@ -95,19 +96,21 @@ def create_app(*args, **kwargs):
 
             elif text == f"/refresh {settings.ADMIN_SECRET}":
                 refresh_today_shows()
+                do_monitoring = False
 
             elif text == f"/report {settings.ADMIN_SECRET}":
                 do_report_monitoring(chat_id)
+                do_monitoring = False
 
-        except Exception as exp:
+        except Exception:
             bot.sendMessage(chat_id=chat_id, text="😔 Mi dispiace, si è verificato un errore. Riprova più tardi.")
             print_exc()
 
-        try:
-            DBHelper.monitor_request()
-        except Exception as exp:
-            print(exp)
-            pass
+        if do_monitoring:
+            try:
+                DBHelper.monitor_request()
+            except Exception:
+                print_exc()
 
         return "ok"
 

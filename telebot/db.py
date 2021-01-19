@@ -92,20 +92,16 @@ class DBHelper:
 
         c.execute(f'SELECT {",".join(f"COALESCE(req_at_{i}, 0)" for i in range(24))} FROM monitoring WHERE day = %s', (cls._today(), ))
         row = c.fetchone()
-        req_at_hour = {}
-        total = 0
-        if row:
-            for i, val in enumerate(row):
-                if val is not None and val > 0:
-                    req_at_hour[i] = val
-                    total += val
-                else:
-                    req_at_hour[i] = 0
-        text = f"<b>Richieste di oggi: {total}</b>\n  "
-        text += cls.time_histogram(req_at_hour)
+        text = cls.report_from_query(row, title="Richieste di oggi")
 
         c.execute(f'SELECT {",".join(f"SUM(req_at_{i})" for i in range(24))} FROM monitoring')
         row = c.fetchone()
+        text += "\n\n"
+        text += cls.report_from_query(row, title="Richieste totali")
+        return text
+
+    @classmethod
+    def report_from_query(cls, row, title: str):
         req_at_hour = {}
         total = 0
         if row:
@@ -115,27 +111,11 @@ class DBHelper:
                     total += val
                 else:
                     req_at_hour[i] = 0
-        text += f"\n\n<b>Richieste totali: {total}</b>\n  "
-        text += cls.time_histogram(req_at_hour)
-
-        return text
+        return f"<b>{title}: {total}</b>\n" + cls.time_histogram(req_at_hour)
 
     @classmethod
     def time_histogram(cls, data: dict) -> str:
-        max_nr = 0
-        for k, v in data.items():
-            if v > max_nr:
-                max_nr = v
-
         rows = []
-        for i in range(max_nr):
-            row_val = max_nr - i
-            row_chars = []
-            for k in sorted(data.keys()):
-                if data[k] < row_val:
-                    row_chars.append("  ")
-                else:
-                    row_chars.append("* ")
-            rows.append(" ".join(row_chars))
-        rows.append(" ".join(str(k).zfill(2) for k in sorted(data.keys())))
+        for k in sorted(data.keys()):
+            rows.append(str(k).zfill(2) + " " + "◼︎" * data[k])
         return "<pre>" + "\n".join(rows) + "</pre>"

@@ -1,7 +1,7 @@
 import json
 import re
 from json import JSONDecoder, JSONEncoder
-from typing import Optional
+from typing import Optional, List
 from urllib import parse
 
 import click
@@ -33,6 +33,7 @@ class Show:
         self.genre = genre
         self.imdb_id = imdb_id
         self.rating = rating
+        self.search_keys = []
 
     def is_movie(self):
         return self.genre == "Film"
@@ -116,7 +117,7 @@ class ShowHelper:
             response = requests.get(url)
             if response.status_code != 200:
                 continue
-            soup = BeautifulSoup(response.text, 'html.parser')
+            soup = BeautifulSoup(response.text, "html.parser")
             for element in soup.find_all(*BOX_ARGS):
                 raw_title = cls._get_text_or_empty(element.find(*TITLE_ARGS))
                 if not raw_title:
@@ -128,34 +129,22 @@ class ShowHelper:
                     genre=cls._get_genre(raw_title),
                     time=cls._get_time(element),
                 )
-                cls._enrich_with_rating(show, element)
+
+                if show.is_movie():
+                    show.search_keys = cls._get_search_key(show, element)
+                    show.imdb_id = cls._get_imdb_id(show)
+                    show.rating = cls._get_rating(show)
+
                 shows.append(show)
 
         return shows
 
     @classmethod
-    def _get_imdb_id(cls, title: str):
-        if not title:
+    def _get_rating(cls, show: Show):
+        if not show.imdb_id:
             return None
 
-        url = f"https://sg.media-imdb.com/suggests/{title.lower()[0]}/{parse.quote(title)}.json"
-        response = requests.get(url)
-        if response.status_code != 200:
-            return None
-
-        try:
-            data = json.loads(re.search(r"\((.+)\)", response.text).group(1))
-            if data.get("d", []):
-                return data["d"][0]["id"]
-        except Exception:
-            return None
-
-    @classmethod
-    def _get_rating(cls, imdb_id: str):
-        if not imdb_id:
-            return None
-
-        url = f"http://www.omdbapi.com/?apikey={settings.OMDB_API_KEY}&i={imdb_id}"
+        url = f"http://www.omdbapi.com/?apikey={settings.OMDB_API_KEY}&i={show.imdb_id}"
         response = requests.get(url)
         if response.status_code != 200:
             return None
@@ -192,29 +181,56 @@ class ShowHelper:
         return None
 
     @classmethod
-    def _get_year(cls, url):
-        response = requests.get(url)
+    def _get_search_key(cls, show: Show, element) -> List[str]:
+        details_page_url = cls._get_details_page(element)
+        if not details_page_url:
+            return [show.title]
+
+        response = requests.get(details_page_url)
         if response.status_code != 200:
-            return ""
-        soup = BeautifulSoup(response.text, 'html.parser')
-        details = soup.find("div", {"class": "schedatavbox"}).find_all("li")
-        for item in details:
-            if "Anno" not in item.text:
-                continue
-            return item.text.split("Anno:")[1].strip()
-        return ""
+            return [show.title]
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        details_list = soup.find("div", {"class": "schedatavbox"}).find_all("li")
+
+        year = None
+        original_title = None
+        if show.title == "Cani sciolti":
+            import pdb; pdb.set_trace()
+        for item in details_list:
+            if "anno" in item.text.lower():
+                year = item.text.split("Anno:")[1].strip()
+            if "titolo originale" in item.text.lower():
+                original_title = item.text.split("Titolo Originale:")[1].strip()
+
+        try:
+            year_int = int(year)
+            years = [year_int, year_int - 1, year_int + 1]
+        except ValueError:
+            years = [year]
+
+        return [
+            f"{original_title if original_title else show.title} {y}"
+            for y in years
+        ]
 
     @classmethod
-    def _enrich_with_rating(cls, show: Show, element):
-        if not show.is_movie():
-            return
-        search_title = show.title
-        details_page = cls._get_details_page(element)
-        if details_page:
-            search_title += " " + cls._get_year(details_page)
+    def _get_imdb_id(cls, show: Show) -> Optional[str]:
+        for search_key in show.search_keys:
+            if not search_key:
+                continue
 
-        show.imdb_id = cls._get_imdb_id(search_title)
-        show.rating = cls._get_rating(show.imdb_id)
+            url = f"https://sg.media-imdb.com/suggests/{search_key.lower()[0]}/{parse.quote(search_key)}.json"
+            response = requests.get(url)
+            if response.status_code != 200:
+                continue
+
+            try:
+                data = json.loads(re.search(r"\((.+)\)", response.text).group(1))
+                if data.get("d", []):
+                    return data["d"][0]["id"]
+            except Exception:
+                continue
 
     @classmethod
     def _get_text_or_empty(cls, element):
@@ -240,4 +256,4 @@ def refresh_today_shows():
 def init_db_command():
     """Clear the existing data and create new tables."""
     DBHelper.init_db()
-    click.echo('Initialized the database.')
+    click.echo("Initialized the database.")

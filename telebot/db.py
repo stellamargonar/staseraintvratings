@@ -116,6 +116,9 @@ class DBHelper:
     @classmethod
     def time_histogram(cls, data: dict) -> str:
         rows = []
+        max_req = max(data.values())
+        max_size = 13
         for k in sorted(data.keys()):
-            rows.append(str(k).zfill(2) + " " + "◼︎" * data[k])
+            size = round(data[k] / max_req * max_size)
+            rows.append(str(k).zfill(2) + " " + "◼︎" * size)
         return "<pre>" + "\n".join(rows) + "</pre>"

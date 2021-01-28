@@ -51,12 +51,9 @@ def do_shows(chat_id):
 def do_top_n(chat_id, n):
     shows = get_today_shows()
     shows.sort(key=lambda x: -x.float_rating)
-    text = "\n".join([
-        show.to_message()
-        for show in shows
-        if show.is_movie()
-    ][:n])
-    bot.sendMessage(chat_id=chat_id, text=text, parse_mode="html")
+    for show in shows[:n]:
+        if show.is_movie():
+            bot.sendMessage(chat_id=chat_id, text=show.to_message(), parse_mode="html")
 
 
 def do_report_monitoring(chat_id):

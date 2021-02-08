@@ -195,10 +195,8 @@ class ShowHelper:
 
         year = None
         original_title = None
-        if show.title == "Cani sciolti":
-            import pdb; pdb.set_trace()
         for item in details_list:
-            if "anno" in item.text.lower():
+            if "Anno" in item.text:
                 year = item.text.split("Anno:")[1].strip()
             if "titolo originale" in item.text.lower():
                 original_title = item.text.split("Titolo Originale:")[1].strip()

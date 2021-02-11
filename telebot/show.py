@@ -196,10 +196,10 @@ class ShowHelper:
         year = None
         original_title = None
         for item in details_list:
-            if "Anno" in item.text:
-                year = item.text.split("Anno:")[1].strip()
-            if "titolo originale" in item.text.lower():
-                original_title = item.text.split("Titolo Originale:")[1].strip()
+            if "anno:" in item.text.lower():
+                year = item.text.lower().split("anno:")[1].strip()
+            if "titolo originale:" in item.text.lower():
+                original_title = item.text.lower().split("titolo originale:")[1].strip()
 
         try:
             year_int = int(year)
@@ -208,7 +208,7 @@ class ShowHelper:
             years = [year]
 
         return [
-            f"{original_title if original_title else show.title} {y}"
+            f"{show.title} {y}"
             for y in years
         ]
 

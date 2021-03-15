@@ -145,15 +145,15 @@ class ShowHelper:
             return None
 
         url = f"http://www.omdbapi.com/?apikey={settings.OMDB_API_KEY}&i={show.imdb_id}"
-        print(url)
         response = requests.get(url)
         if response.status_code != 200:
             return None
-        print(response.text)
-
-        for rating in response.json().get("Ratings", []):
-            if rating["Source"] == "Internet Movie Database":
-                return rating["Value"].split("/")[0].strip()
+        try:
+            for rating in response.json().get("Ratings", []):
+                if rating["Source"] == "Internet Movie Database":
+                    return rating["Value"].split("/")[0].strip()
+        except Exception:
+            return None
 
     @classmethod
     def _clean_title(cls, title):

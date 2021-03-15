@@ -145,9 +145,11 @@ class ShowHelper:
             return None
 
         url = f"http://www.omdbapi.com/?apikey={settings.OMDB_API_KEY}&i={show.imdb_id}"
+        print(url)
         response = requests.get(url)
         if response.status_code != 200:
             return None
+        print(response.text)
 
         for rating in response.json().get("Ratings", []):
             if rating["Source"] == "Internet Movie Database":
